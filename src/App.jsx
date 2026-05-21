@@ -619,7 +619,7 @@ function AkinatorScreen({ onBack, onSaveCard, onGoSalvos }) {
       </div>
       {phase === "question" && (
         <div style={{ padding:"8px 16px", background:C.purpleLight }}>
-          <div style={{ fontSize:11, fontWeight:700, color:C.purple, marginBottom:3 }}>Pergunta {node.num} de 6</div>
+          <div style={{ fontSize:11, fontWeight:700, color:C.purple, marginBottom:3 }}>Pergunta {node.num}</div>
           <div style={{ height:7, background:"rgba(255,255,255,0.6)", borderRadius:4, overflow:"hidden" }}>
             <div style={{ height:"100%", background:C.purple, width:`${((node.num||1)/6)*100}%`, borderRadius:4, transition:"width 0.4s" }} />
           </div>
