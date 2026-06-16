@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── Paleta ─────────────────────────────────────────────────────────────────────
 const C = {
@@ -243,7 +243,7 @@ function Field({ label, type = "text", value, onChange, placeholder, error }) {
 }
 
 // ── Card de comunicação ────────────────────────────────────────────────────────
-function CommCard({ item, onPress, big = false }) {
+function CommCard({ item, onPress, big = false, isFav = false, onToggleFav = null }) {
   const [pressed, setPressed] = useState(false);
   const w = big ? 140 : 110;
   const h = big ? 120 : 100;
@@ -252,29 +252,49 @@ function CommCard({ item, onPress, big = false }) {
   const bg = item.color || C.card;
 
   return (
-    <button
-      onClick={() => { setPressed(true); setTimeout(() => setPressed(false), 150); onPress(item); }}
-      style={{
-        width: w, height: h,
-        background: pressed ? darken(bg) : bg,
-        border: "none", borderRadius: 18, cursor: "pointer",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        gap: 5,
-        boxShadow: pressed ? "0 2px 4px rgba(0,0,0,0.15)" : "0 4px 14px rgba(0,0,0,0.18)",
-        transform: pressed ? "scale(0.94)" : "scale(1)",
-        transition: "all 0.12s ease",
-        padding: 8, flexShrink: 0,
-      }}
-    >
-      <span style={{ fontSize: emojiSz, lineHeight: 1 }}>{item.emoji}</span>
-      <span style={{
-        fontSize: fontSz, fontWeight: 800, color: "#fff",
-        textShadow: "0 1px 3px rgba(0,0,0,0.45)",
-        textAlign: "center", lineHeight: 1.2,
-        fontFamily: "'Nunito', sans-serif", letterSpacing: 0.3,
-      }}>{item.label}</span>
-    </button>
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onClick={() => { setPressed(true); setTimeout(() => setPressed(false), 150); onPress(item); }}
+        style={{
+          width: w, height: h,
+          background: pressed ? darken(bg) : bg,
+          border: "none", borderRadius: 18, cursor: "pointer",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          gap: 5,
+          boxShadow: pressed ? "0 2px 4px rgba(0,0,0,0.15)" : "0 4px 14px rgba(0,0,0,0.18)",
+          transform: pressed ? "scale(0.94)" : "scale(1)",
+          transition: "all 0.12s ease",
+          padding: 8,
+        }}
+      >
+        <span style={{ fontSize: emojiSz, lineHeight: 1 }}>{item.emoji}</span>
+        <span style={{
+          fontSize: fontSz, fontWeight: 800, color: "#fff",
+          textShadow: "0 1px 3px rgba(0,0,0,0.45)",
+          textAlign: "center", lineHeight: 1.2,
+          fontFamily: "'Nunito', sans-serif", letterSpacing: 0.3,
+        }}>{item.label}</span>
+      </button>
+      {onToggleFav && (
+        <button
+          onClick={e => { e.stopPropagation(); onToggleFav(item); }}
+          style={{
+            position: "absolute", top: 4, right: 4,
+            background: isFav ? "rgba(255,200,0,0.85)" : "rgba(0,0,0,0.28)",
+            border: "none", borderRadius: "50%",
+            width: 22, height: 22, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 11, padding: 0, lineHeight: 1,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+            transition: "background 0.15s",
+          }}
+          title={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+        >
+          {isFav ? "⭐" : "☆"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -296,18 +316,26 @@ function SimNaoBar({ onPress }) {
 }
 
 // ── Seção com título e grupo de cards ─────────────────────────────────────────
-function CardGroup({ group, onPress }) {
+function CardGroup({ group, onPress, favoriteIds = [], onToggleFav = null, catColor = C.primaryLight }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{
-        fontSize: 12, fontWeight: 800, color: C.textLight,
-        textTransform: "uppercase", letterSpacing: 1,
-        marginBottom: 8, paddingLeft: 2,
-        fontFamily: "'Nunito', sans-serif",
-      }}>{group.title}</div>
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{
+          width: 4, height: 18, borderRadius: 3,
+          background: catColor, flexShrink: 0,
+        }} />
+        <span style={{
+          fontSize: 13, fontWeight: 800, color: C.text,
+          textTransform: "uppercase", letterSpacing: 0.8,
+          fontFamily: "'Nunito', sans-serif",
+        }}>{group.title}</span>
+        <div style={{ flex: 1, height: 1.5, background: `${catColor}30`, borderRadius: 1 }} />
+      </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {group.items.map(item => (
-          <CommCard key={item.id} item={item} onPress={onPress} />
+          <CommCard key={item.id} item={item} onPress={onPress}
+            isFav={favoriteIds.includes(item.id)}
+            onToggleFav={onToggleFav} />
         ))}
       </div>
     </div>
@@ -317,14 +345,30 @@ function CardGroup({ group, onPress }) {
 function TabBtn({ label, icon, active, color, onClick }) {
   return (
     <button onClick={onClick} style={{
-      padding: "6px 14px", borderRadius: 20, border: "none",
-      background: active ? color : "rgba(255,255,255,0.6)",
-      color: active ? "#fff" : C.text,
-      fontWeight: 700, fontSize: 12, cursor: "pointer",
+      padding: "7px 14px 7px 10px", borderRadius: 22, border: "none",
+      background: active ? `linear-gradient(135deg, ${color}, ${color}cc)` : "#fff",
+      color: active ? "#fff" : C.textLight,
+      fontWeight: 800, fontSize: 12, cursor: "pointer",
       whiteSpace: "nowrap",
-      boxShadow: active ? `0 3px 8px ${color}55` : "none",
-      transition: "all 0.2s", fontFamily: "'Nunito', sans-serif",
-    }}>{icon} {label}</button>
+      boxShadow: active
+        ? `0 4px 14px ${color}55, 0 1px 3px rgba(0,0,0,0.12)`
+        : "0 2px 6px rgba(0,0,0,0.10)",
+      transform: active ? "translateY(-1px) scale(1.04)" : "scale(1)",
+      transition: "all 0.18s ease",
+      fontFamily: "'Nunito', sans-serif",
+      display: "flex", alignItems: "center", gap: 6,
+      flexShrink: 0,
+      outline: active ? "none" : `2px solid ${color}30`,
+      outlineOffset: -2,
+    }}>
+      <span style={{
+        width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+        background: active ? "rgba(255,255,255,0.28)" : `${color}22`,
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        fontSize: 13,
+      }}>{icon}</span>
+      {label}
+    </button>
   );
 }
 
@@ -343,8 +387,8 @@ function IconBtn({ icon, label, onClick, color }) {
 }
 
 // ── Tela Principal ─────────────────────────────────────────────────────────────
-function MainScreen({ user, onAkinator, onHelp, onCreateCard, onLogout, onUpdateUser }) {
-  const [activeTab, setActiveTab] = useState("basico");
+function MainScreen({ user, initialTab, onAkinator, onHelp, onCreateCard, onLogout, onUpdateUser }) {
+  const [activeTab, setActiveTab] = useState(initialTab || "basico");
   const [feedback, setFeedback] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -354,7 +398,45 @@ function MainScreen({ user, onAkinator, onHelp, onCreateCard, onLogout, onUpdate
   }
 
   const savedCards = user.savedCards || [];
+  const favoriteCards = user.favoriteCards || [];
+  const categoryCards = user.categoryCards || {};
+  const customCategories = user.customCategories || {};
+  const favoriteIds = favoriteCards.map(c => c.id);
+
+  function handleToggleFav(item) {
+    const alreadyFav = favoriteCards.find(c => c.id === item.id);
+    const newFavs = alreadyFav
+      ? favoriteCards.filter(c => c.id !== item.id)
+      : [...favoriteCards, item];
+    user.favoriteCards = newFavs;
+    onUpdateUser({ ...user });
+  }
+
   const activeCat = CATEGORIES[activeTab];
+
+  const tabsRef = useRef(null);
+  const [tabsFade, setTabsFade] = useState({ left: false, right: true });
+
+  function handleTabsScroll() {
+    const el = tabsRef.current;
+    if (!el) return;
+    setTabsFade({
+      left: el.scrollLeft > 8,
+      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 8,
+    });
+  }
+
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const check = () => setTabsFade({
+      left: el.scrollLeft > 8,
+      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 8,
+    });
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "'Nunito', sans-serif" }}>
@@ -408,36 +490,184 @@ function MainScreen({ user, onAkinator, onHelp, onCreateCard, onLogout, onUpdate
       </div>
 
       {/* Tabs */}
-      <div className="scroll-x-styled" style={{
-        display: "flex", overflowX: "auto", background: C.tab,
-        padding: "6px 8px", gap: 6, borderBottom: `3px solid ${C.primaryLight}`,
-        flexShrink: 0,
-      }}>
-        {Object.entries(CATEGORIES).map(([key, cat]) => (
-          <TabBtn key={key} label={cat.label} icon={cat.icon}
-            active={activeTab === key} color={cat.color} onClick={() => setActiveTab(key)} />
-        ))}
-        {savedCards.length > 0 && (
-          <TabBtn label="SALVOS" icon="⭐" active={activeTab === "salvos"}
-            color={C.yellow} onClick={() => setActiveTab("salvos")} />
-        )}
+      <div style={{ position: "relative", flexShrink: 0, background: C.tab, borderBottom: `3px solid ${C.primaryLight}` }}>
+        <div ref={tabsRef} className="scroll-x-styled" style={{
+          display: "flex", overflowX: "auto", padding: "8px 10px", gap: 7,
+          alignItems: "center", scrollSnapType: "x proximity",
+        }}>
+          {Object.entries(CATEGORIES).map(([key, cat]) => (
+            <TabBtn key={key} label={cat.label} icon={cat.icon}
+              active={activeTab === key} color={cat.color} onClick={() => setActiveTab(key)} />
+          ))}
+          {Object.values(customCategories).map(cat => (
+            <TabBtn key={cat.key} label={cat.label} icon={cat.icon}
+              active={activeTab === cat.key} color={cat.color}
+              onClick={() => setActiveTab(cat.key)} />
+          ))}
+          {savedCards.length > 0 && (
+            <TabBtn label="SALVOS" icon="📌" active={activeTab === "salvos"}
+              color={C.yellow} onClick={() => setActiveTab("salvos")} />
+          )}
+          {favoriteCards.length > 0 && (
+            <TabBtn label="FAVORITOS" icon="⭐" active={activeTab === "favoritos"}
+              color="#E6A817" onClick={() => setActiveTab("favoritos")} />
+          )}
+          {/* Espaço extra no fim para o fade não cortar o último item */}
+          <div style={{ width: 10, flexShrink: 0 }} />
+        </div>
+        {/* Fade esquerdo */}
+        <div style={{
+          pointerEvents: "none", position: "absolute", left: 0, top: 0, bottom: 0, width: 36,
+          background: `linear-gradient(to right, ${C.tab}, transparent)`,
+          opacity: tabsFade.left ? 1 : 0, transition: "opacity 0.2s",
+        }} />
+        {/* Fade direito + seta indicadora */}
+        <div style={{
+          pointerEvents: "none", position: "absolute", right: 0, top: 0, bottom: 0, width: 48,
+          background: `linear-gradient(to left, ${C.tab} 40%, transparent)`,
+          opacity: tabsFade.right ? 1 : 0, transition: "opacity 0.2s",
+          display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 6,
+        }}>
+          <span style={{ fontSize: 14, color: C.textLight, fontWeight: 800 }}>›</span>
+        </div>
       </div>
 
       {/* Conteúdo com scroll */}
       <div className="scroll-styled" style={{ flex: 1, overflowY: "auto", background: C.bg }}>
+        {/* Banner da aba ativa */}
+        {activeTab === "salvos" && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px",
+            background: `linear-gradient(90deg, ${C.yellow}18, transparent)`,
+            borderBottom: `2px solid ${C.yellow}28`,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: `${C.yellow}28`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, flexShrink: 0,
+            }}>📌</div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: "#B8860B", letterSpacing: 0.3 }}>SALVOS</div>
+              <div style={{ fontSize: 11, color: C.textLight, fontWeight: 600 }}>{savedCards.length} card{savedCards.length !== 1 ? "s" : ""} salvos</div>
+            </div>
+          </div>
+        )}
+        {activeTab === "favoritos" && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px",
+            background: "linear-gradient(90deg, #E6A81718, transparent)",
+            borderBottom: "2px solid #E6A81728",
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: "#E6A81728",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, flexShrink: 0,
+            }}>⭐</div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: "#B8860B", letterSpacing: 0.3 }}>FAVORITOS</div>
+              <div style={{ fontSize: 11, color: C.textLight, fontWeight: 600 }}>{favoriteCards.length} card{favoriteCards.length !== 1 ? "s" : ""} favoritos</div>
+            </div>
+          </div>
+        )}
+        {customCategories[activeTab] && (() => { const cc = customCategories[activeTab]; return (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px",
+            background: `linear-gradient(90deg, ${cc.color}18, transparent)`,
+            borderBottom: `2px solid ${cc.color}28`,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: `${cc.color}28`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, flexShrink: 0,
+            }}>{cc.icon}</div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: cc.color, letterSpacing: 0.3 }}>{cc.label}</div>
+              <div style={{ fontSize: 11, color: C.textLight, fontWeight: 600 }}>{(categoryCards[activeTab] || []).length} card{(categoryCards[activeTab] || []).length !== 1 ? "s" : ""}</div>
+            </div>
+          </div>
+        ); })()}
+        {activeCat && activeTab !== "salvos" && activeTab !== "favoritos" && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px 10px",
+            background: `linear-gradient(90deg, ${activeCat.color}18, transparent)`,
+            borderBottom: `2px solid ${activeCat.color}28`,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: `${activeCat.color}28`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, flexShrink: 0,
+            }}>{activeCat.icon}</div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: activeCat.color, letterSpacing: 0.3 }}>
+                {activeCat.label}
+              </div>
+              <div style={{ fontSize: 11, color: C.textLight, fontWeight: 600 }}>
+                {activeCat.groups.reduce((acc, g) => acc + g.items.length, 0)} cards disponíveis
+              </div>
+            </div>
+          </div>
+        )}
         <div style={{ padding: "12px 14px 8px" }}>
           {activeTab === "salvos" ? (
             savedCards.length === 0
               ? <div style={{ color: C.textLight, textAlign: "center", marginTop: 40, fontSize: 15 }}>Nenhum card salvo ainda.</div>
               : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {savedCards.map(item => <CommCard key={item.id} item={item} onPress={handleCard} />)}
+                  {savedCards.map(item => (
+                    <CommCard key={item.id} item={item} onPress={handleCard}
+                      isFav={favoriteIds.includes(item.id)}
+                      onToggleFav={handleToggleFav} />
+                  ))}
+                </div>
+              )
+          ) : activeTab === "favoritos" ? (
+            favoriteCards.length === 0
+              ? <div style={{ color: C.textLight, textAlign: "center", marginTop: 40, fontSize: 15 }}>Nenhum card favoritado ainda.</div>
+              : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {favoriteCards.map(item => (
+                    <CommCard key={item.id} item={item} onPress={handleCard}
+                      isFav={true}
+                      onToggleFav={handleToggleFav} />
+                  ))}
                 </div>
               )
           ) : activeCat ? (
-            activeCat.groups.map((group, i) => (
-              <CardGroup key={i} group={group} onPress={handleCard} />
-            ))
+            <>
+              {activeCat.groups.map((group, i) => (
+                <CardGroup key={i} group={group} onPress={handleCard}
+                  favoriteIds={favoriteIds}
+                  onToggleFav={handleToggleFav}
+                  catColor={activeCat.color} />
+              ))}
+              {(categoryCards[activeTab] || []).length > 0 && (
+                <CardGroup
+                  group={{ title: "✏️ Meus Cards", items: categoryCards[activeTab] }}
+                  onPress={handleCard}
+                  favoriteIds={favoriteIds}
+                  onToggleFav={handleToggleFav}
+                  catColor={activeCat.color} />
+              )}
+            </>
+          ) : customCategories[activeTab] ? (
+            (categoryCards[activeTab] || []).length === 0
+              ? <div style={{ color: C.textLight, textAlign: "center", marginTop: 40, fontSize: 15 }}>Nenhum card nesta categoria ainda.</div>
+              : (
+                <CardGroup
+                  group={{ title: "✏️ Meus Cards", items: categoryCards[activeTab] }}
+                  onPress={handleCard}
+                  favoriteIds={favoriteIds}
+                  onToggleFav={handleToggleFav}
+                  catColor={customCategories[activeTab].color} />
+              )
           ) : null}
         </div>
         {/* SIM / NÃO fixos no rodapé de TODAS as categorias */}
@@ -496,7 +726,7 @@ function ProfileModal({ user, onClose, onLogout, onUpdate }) {
           }}>👤</div>
           <div style={{ fontWeight: 800, fontSize: 20, color: C.text }}>{user.name}</div>
           <div style={{ fontSize: 13, color: C.textLight }}>{user.email}</div>
-          <div style={{ marginTop: 6, fontSize: 12, color: C.textLight }}>⭐ {(user.savedCards || []).length} cards salvos</div>
+          <div style={{ marginTop: 6, fontSize: 12, color: C.textLight }}>📌 {(user.savedCards || []).length} salvos &nbsp;·&nbsp; ⭐ {(user.favoriteCards || []).length} favoritos</div>
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {["info","edit"].map(t => (
@@ -510,7 +740,7 @@ function ProfileModal({ user, onClose, onLogout, onUpdate }) {
         </div>
         {tab === "info" && (
           <div>
-            {[["👤","Nome",user.name],["📧","E-mail",user.email],["⭐","Cards salvos",`${(user.savedCards||[]).length}`]].map(([icon,lbl,val]) => (
+            {[["👤","Nome",user.name],["📧","E-mail",user.email],["📌","Cards salvos",`${(user.savedCards||[]).length}`],["⭐","Favoritos",`${(user.favoriteCards||[]).length}`]].map(([icon,lbl,val]) => (
               <div key={lbl} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 16px", background:C.bg, borderRadius:12, marginBottom:8, border:`1.5px solid ${C.primaryLight}` }}>
                 <span style={{ fontSize:20 }}>{icon}</span>
                 <div>
@@ -547,26 +777,26 @@ const AKINATOR_TREE = {
         pergunta: "Dá para levar no bolso? 🤏", num: 4,
         sim: {
           pergunta: "Você mastiga e depois joga fora?", num: 5,
-          sim: { resposta: "Você quer um chiclete! 🍬", cardLabel: "CHICLETE", cardEmoji: "🍬" },
-          nao: { resposta: "Você quer uma bala! 🍡", cardLabel: "BALA", cardEmoji: "🍡" },
+          sim: { resposta: "Você quer um chiclete! 🍬", cardLabel: "CHICLETE", cardEmoji: "🍬", cardCategory: "comida" },
+          nao: { resposta: "Você quer uma bala! 🍡", cardLabel: "BALA", cardEmoji: "🍡", cardCategory: "comida" },
         },
         nao: {
           pergunta: "É gelado? 🧊", num: 5,
-          sim: { resposta: "Você quer sorvete! 🍦", cardLabel: "SORVETE", cardEmoji: "🍦" },
-          nao: { resposta: "Você quer um bolo! 🎂", cardLabel: "BOLO", cardEmoji: "🎂" },
+          sim: { resposta: "Você quer sorvete! 🍦", cardLabel: "SORVETE", cardEmoji: "🍦", cardCategory: "comida" },
+          nao: { resposta: "Você quer um bolo! 🎂", cardLabel: "BOLO", cardEmoji: "🎂", cardCategory: "comida" },
         },
       },
       nao: {
         pergunta: "É algo para beber? 💧", num: 4,
         sim: {
           pergunta: "É gelado? 🧊", num: 5,
-          sim: { resposta: "Você quer água gelada ou suco! 🥤", cardLabel: "SUCO", cardEmoji: "🥤" },
-          nao: { resposta: "Você quer uma bebida quente! ☕", cardLabel: "BEBIDA QUENTE", cardEmoji: "☕" },
+          sim: { resposta: "Você quer água gelada ou suco! 🥤", cardLabel: "SUCO", cardEmoji: "🥤", cardCategory: "comida" },
+          nao: { resposta: "Você quer uma bebida quente! ☕", cardLabel: "BEBIDA QUENTE", cardEmoji: "☕", cardCategory: "comida" },
         },
         nao: {
           pergunta: "É uma refeição completa? 🍽️", num: 5,
-          sim: { resposta: "Você quer almoço ou jantar! 🍽️", cardLabel: "ALMOÇO", cardEmoji: "🍽️" },
-          nao: { resposta: "Você quer um lanche! 🥪", cardLabel: "LANCHE", cardEmoji: "🥪" },
+          sim: { resposta: "Você quer almoço ou jantar! 🍽️", cardLabel: "ALMOÇO", cardEmoji: "🍽️", cardCategory: "comida" },
+          nao: { resposta: "Você quer um lanche! 🥪", cardLabel: "LANCHE", cardEmoji: "🥪", cardCategory: "comida" },
         },
       },
     },
@@ -576,32 +806,130 @@ const AKINATOR_TREE = {
         pergunta: "É dentro de casa? 🏠", num: 4,
         sim: {
           pergunta: "Envolve uma tela? 📺", num: 5,
-          sim: { resposta: "Você quer assistir TV ou jogar! 📺🎮", cardLabel: "TV/JOGAR", cardEmoji: "📺" },
-          nao: { resposta: "Você quer brincar ou desenhar! 🧩🎨", cardLabel: "BRINCAR", cardEmoji: "🧩" },
+          sim: { resposta: "Você quer assistir TV ou jogar! 📺🎮", cardLabel: "TV/JOGAR", cardEmoji: "📺", cardCategory: "atividades" },
+          nao: { resposta: "Você quer brincar ou desenhar! 🧩🎨", cardLabel: "BRINCAR", cardEmoji: "🧩", cardCategory: "atividades" },
         },
-        nao: { resposta: "Você quer passear ou brincar fora! 🌳", cardLabel: "PASSEAR", cardEmoji: "🌳" },
+        nao: { resposta: "Você quer passear ou brincar fora! 🌳", cardLabel: "PASSEAR", cardEmoji: "🌳", cardCategory: "atividades" },
       },
       nao: {
         pergunta: "É sobre como você está se sentindo? ❤️", num: 4,
-        sim: { resposta: "Vá para Sentimentos para me contar! ❤️", cardLabel: "SENTIMENTO", cardEmoji: "❤️" },
-        nao: { resposta: "Use os cards para me ajudar 😊", cardLabel: "AJUDA", cardEmoji: "😊" },
+        sim: { resposta: "Vá para Sentimentos para me contar! ❤️", cardLabel: "SENTIMENTO", cardEmoji: "❤️", cardCategory: "sentimentos" },
+        nao: { resposta: "Use os cards para me ajudar 😊", cardLabel: "AJUDA", cardEmoji: "😊", cardCategory: null },
       },
     },
   },
-  nao: { resposta: "Tudo bem! Estou aqui se precisar. 😊", cardLabel: "TUDO BEM", cardEmoji: "😊" },
+  nao: { resposta: "Tudo bem! Estou aqui se precisar. 😊", cardLabel: "TUDO BEM", cardEmoji: "😊", cardCategory: null },
 };
 
-function AkinatorScreen({ onBack, onSaveCard, onGoSalvos }) {
+// ── Seletor de categoria ───────────────────────────────────────────────────────
+const CUSTOM_CAT_COLORS = ["#8E44AD", "#16A085", "#2980B9", "#E67E22", "#C0392B", "#1ABC9C"];
+
+function CategoryPicker({ value, onChange, customCategories = {}, onAddCategory }) {
+  const [showInput, setShowInput] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const builtinOptions = [
+    { key: null, icon: "📌", label: "Salvos", color: C.yellow },
+    ...Object.entries(CATEGORIES).map(([key, cat]) => ({ key, icon: cat.icon, label: cat.label, color: cat.color })),
+  ];
+  const customOptions = Object.values(customCategories);
+  const allOptions = [...builtinOptions, ...customOptions];
+
+  function handleAdd() {
+    const name = newName.trim().toUpperCase();
+    if (!name) return;
+    const key = "cat_" + Date.now();
+    const color = CUSTOM_CAT_COLORS[Object.keys(customCategories).length % CUSTOM_CAT_COLORS.length];
+    const cat = { key, label: name, icon: "🏷️", color };
+    onAddCategory(cat);
+    onChange(key);
+    setNewName("");
+    setShowInput(false);
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: showInput ? 8 : 0 }}>
+        {allOptions.map(opt => {
+          const active = value === opt.key;
+          return (
+            <button key={opt.key ?? "none"} onClick={() => onChange(opt.key)} style={{
+              padding: "6px 11px", borderRadius: 16, border: "none", cursor: "pointer",
+              background: active ? opt.color : "#f0ece8",
+              color: active ? "#fff" : C.textLight,
+              fontWeight: 700, fontSize: 12,
+              boxShadow: active ? `0 3px 8px ${opt.color}55` : "none",
+              transition: "all 0.15s", fontFamily: "'Nunito', sans-serif",
+              display: "flex", alignItems: "center", gap: 5,
+            }}>
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          );
+        })}
+        {!showInput && (
+          <button onClick={() => setShowInput(true)} style={{
+            padding: "6px 11px", borderRadius: 16, border: `2px dashed ${C.primaryLight}`,
+            background: "transparent", color: C.textLight, fontWeight: 700, fontSize: 12,
+            cursor: "pointer", fontFamily: "'Nunito', sans-serif",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            <span>➕</span><span>Nova</span>
+          </button>
+        )}
+      </div>
+      {showInput && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value.toUpperCase())}
+            onKeyDown={e => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setShowInput(false); setNewName(""); } }}
+            placeholder="Nome da categoria..."
+            style={{
+              flex: 1, padding: "8px 12px", borderRadius: 12,
+              border: `2px solid ${C.primaryLight}`, fontSize: 13,
+              fontFamily: "'Nunito', sans-serif", fontWeight: 700,
+              color: C.text, outline: "none", background: "#fff",
+            }}
+          />
+          <button onClick={handleAdd} style={{
+            background: C.sim, border: "none", borderRadius: 10,
+            width: 34, height: 34, cursor: "pointer", fontSize: 16,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>✓</button>
+          <button onClick={() => { setShowInput(false); setNewName(""); }} style={{
+            background: "#e0dbd8", border: "none", borderRadius: 10,
+            width: 34, height: 34, cursor: "pointer", fontSize: 14,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AkinatorScreen({ onBack, onSaveCard, onGoTab, customCategories, onAddCategory }) {
   const [phase, setPhase] = useState("intro");
   const [node, setNode] = useState(AKINATOR_TREE);
   const [history, setHistory] = useState([]);
+  const [saveCat, setSaveCat] = useState(null);
 
-  function start() { setNode(AKINATOR_TREE); setHistory([]); setPhase("question"); speak(AKINATOR_TREE.pergunta); }
+  function start() { setNode(AKINATOR_TREE); setHistory([]); setPhase("question"); setSaveCat(null); speak(AKINATOR_TREE.pergunta); }
   function answer(resp) {
     const next = node[resp];
     setHistory(h => [...h, node]);
-    if (next.resposta) { setPhase("result"); setNode(next); speak(next.resposta); }
-    else { setNode(next); speak(next.pergunta); }
+    if (next.resposta) {
+      setPhase("result");
+      setNode(next);
+      setSaveCat(next.cardCategory ?? null);
+      speak(next.resposta);
+    } else {
+      setNode(next);
+      speak(next.pergunta);
+    }
   }
   function goBack() {
     if (history.length === 0) { setPhase("intro"); return; }
@@ -650,12 +978,23 @@ function AkinatorScreen({ onBack, onSaveCard, onGoSalvos }) {
           </div>
         )}
         {phase === "result" && (
-          <div style={{ background:"#fff", borderRadius:24, padding:28, textAlign:"center", maxWidth:340, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", border:`3px solid ${C.sim}` }}>
-            <div style={{ fontSize:64, marginBottom:10 }}>🎉</div>
-            <div style={{ fontSize:21, fontWeight:800, color:C.sim, marginBottom:10 }}>Descobri!</div>
-            <div style={{ fontSize:17, color:C.text, lineHeight:1.5, marginBottom:22 }}>{node.resposta}</div>
+          <div style={{ background:"#fff", borderRadius:24, padding:24, textAlign:"center", maxWidth:360, width:"100%", boxShadow:"0 8px 30px rgba(0,0,0,0.12)", border:`3px solid ${C.sim}` }}>
+            <div style={{ fontSize:56, marginBottom:8 }}>🎉</div>
+            <div style={{ fontSize:20, fontWeight:800, color:C.sim, marginBottom:8 }}>Descobri!</div>
+            <div style={{ fontSize:16, color:C.text, lineHeight:1.5, marginBottom:18 }}>{node.resposta}</div>
+
+            {/* Seletor de categoria */}
+            <div style={{ textAlign:"left", marginBottom:18 }}>
+              <div style={{ fontSize:12, fontWeight:800, color:C.textLight, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Salvar em qual categoria?</div>
+              <CategoryPicker value={saveCat} onChange={setSaveCat} customCategories={customCategories} onAddCategory={onAddCategory} />
+            </div>
+
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              <button onClick={() => { onSaveCard({ id:Date.now(), label: node.cardLabel || "CARD", emoji: node.cardEmoji || "⭐", color:C.purple }); onGoSalvos(); }} style={{ background:C.yellow, color:C.text, border:"none", borderRadius:14, padding:"12px 20px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'Nunito', sans-serif" }}>⭐ Salvar esse card</button>
+              <button onClick={() => {
+                const card = { id:Date.now(), label: node.cardLabel || "CARD", emoji: node.cardEmoji || "⭐", color:C.purple, category: saveCat };
+                onSaveCard(card);
+                onGoTab(saveCat || "salvos");
+              }} style={{ background:C.yellow, color:C.text, border:"none", borderRadius:14, padding:"12px 20px", fontWeight:800, fontSize:15, cursor:"pointer", fontFamily:"'Nunito', sans-serif", boxShadow:`0 4px 12px ${C.yellow}55` }}>📌 Salvar esse card</button>
               <button onClick={start} style={{ background:C.purple, color:"#fff", border:"none", borderRadius:14, padding:"12px 20px", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'Nunito', sans-serif" }}>🔄 Tentar de novo</button>
               <button onClick={onBack} style={{ background:"transparent", color:C.textLight, border:`2px solid ${C.textLight}`, borderRadius:14, padding:"10px 20px", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"'Nunito', sans-serif" }}>← Voltar ao início</button>
             </div>
@@ -674,7 +1013,8 @@ function HelpScreen({ onBack }) {
     { icon:"❤️", title:"Sentimentos organizados", desc:"Emoções agrupadas em Positivas, Neutras e Difíceis para facilitar a escolha." },
     { icon:"🍽️", title:"Categoria COMIDA", desc:"Alimentos organizados em Refeições, Lanches, Frutas & Doces e Bebidas." },
     { icon:"✨", title:"Modo Akinator", desc:"O assistente descobre o que você quer com perguntas de SIM/NÃO." },
-    { icon:"⭐", title:"Salvar Cards", desc:"No Akinator, salve cards descobertos na aba Salvos." },
+    { icon:"📌", title:"Salvar Cards", desc:"No Akinator ou ao criar, salve cards na aba 📌 Salvos." },
+    { icon:"⭐", title:"Favoritar Cards", desc:"Toque na estrelinha em qualquer card para adicioná-lo à aba ⭐ Favoritos." },
     { icon:"➕", title:"Criar Card", desc:"Crie seu próprio card com emoji, nome e cor." },
     { icon:"👤", title:"Perfil", desc:"Edite seu nome, senha ou saia da conta." },
   ];
@@ -700,12 +1040,19 @@ function HelpScreen({ onBack }) {
 }
 
 // ── Tela Criar Card ────────────────────────────────────────────────────────────
-function CreateCardScreen({ onBack, onSave }) {
+function CreateCardScreen({ onBack, onSave, onGoTab, customCategories, onAddCategory }) {
   const [label, setLabel] = useState("");
   const [emoji, setEmoji] = useState("😊");
   const [color, setColor] = useState(C.primary);
+  const [category, setCategory] = useState(null);
   const emojis = ["😊","🎉","🌟","🏃","💊","🌈","🐶","🎁","🏖️","🎵","🌙","☀️","🍕","💪","🎈","🤝"];
   const colors = [C.primary, C.sim, C.nao, C.purple, C.blue, C.yellow, C.pink, "#27AE60"];
+
+  function handleSave() {
+    if (!label.trim()) return;
+    onSave({ id: Date.now(), label, emoji, color, category });
+    onGoTab(category || "salvos");
+  }
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", fontFamily:"'Nunito', sans-serif" }}>
@@ -728,13 +1075,17 @@ function CreateCardScreen({ onBack, onSave }) {
             {emojis.map(e => <button key={e} onClick={() => setEmoji(e)} style={{ width:44, height:44, fontSize:24, border: emoji===e ? `3px solid ${C.primary}` : "2px solid transparent", borderRadius:10, background: emoji===e ? C.primaryLight : "#fff", cursor:"pointer" }}>{e}</button>)}
           </div>
         </div>
-        <div style={{ marginBottom:22 }}>
+        <div style={{ marginBottom:14 }}>
           <div style={{ fontWeight:700, color:C.text, marginBottom:8, fontSize:13 }}>Cor</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
             {colors.map(cl => <button key={cl} onClick={() => setColor(cl)} style={{ width:42, height:42, background:cl, border: color===cl ? `3px solid ${C.text}` : "3px solid transparent", borderRadius:12, cursor:"pointer", boxShadow:"0 2px 6px rgba(0,0,0,0.2)" }} />)}
           </div>
         </div>
-        <button onClick={() => { if (!label.trim()) return; onSave({ id:Date.now(), label, emoji, color }); onBack(); }} style={{ width:"100%", padding:"15px", background: label.trim() ? C.sim : "#ccc", border:"none", borderRadius:16, color:"#fff", fontWeight:800, fontSize:17, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily:"'Nunito', sans-serif" }}>💾 Salvar Card</button>
+        <div style={{ marginBottom:22 }}>
+          <div style={{ fontWeight:700, color:C.text, marginBottom:8, fontSize:13 }}>Categoria <span style={{ fontWeight:600, color:C.textLight }}>(opcional)</span></div>
+          <CategoryPicker value={category} onChange={setCategory} customCategories={customCategories} onAddCategory={onAddCategory} />
+        </div>
+        <button onClick={handleSave} style={{ width:"100%", padding:"15px", background: label.trim() ? C.sim : "#ccc", border:"none", borderRadius:16, color:"#fff", fontWeight:800, fontSize:17, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily:"'Nunito', sans-serif" }}>💾 Salvar Card</button>
       </div>
     </div>
   );
@@ -754,7 +1105,7 @@ function LoginScreen({ onLogin, onGoRegister }) {
     if (!user) {
       // Cria conta automaticamente se não existir
       const displayName = email.trim() ? email.trim().split("@")[0] : "Visitante";
-      user = { name: displayName, email: key, password, savedCards: [] };
+      user = { name: displayName, email: key, password, savedCards: [], favoriteCards: [], categoryCards: {}, customCategories: {} };
       DB.users.push(user);
     }
     onLogin(user);
@@ -799,7 +1150,7 @@ function RegisterScreen({ onRegister, onGoLogin }) {
     if (password !== confirm) e.confirm = "As senhas não coincidem";
     if (DB.users.find(u => u.email === email.trim().toLowerCase())) e.email = "E-mail já cadastrado";
     if (Object.keys(e).length) { setErrors(e); return; }
-    const user = { name:name.trim(), email:email.trim().toLowerCase(), password, savedCards:[] };
+    const user = { name:name.trim(), email:email.trim().toLowerCase(), password, savedCards:[], favoriteCards:[], categoryCards:{}, customCategories:{} };
     DB.users.push(user);
     setSuccess(true);
     setTimeout(() => onRegister(user), 1200);
@@ -875,7 +1226,7 @@ export default function App() {
     `;
     document.head.appendChild(style);
     if (DB.users.length === 0) {
-      DB.users.push({ name:"Usuário Demo", email:"demo@demo.com", password:"123456", savedCards:[] });
+      DB.users.push({ name:"Usuário Demo", email:"demo@demo.com", password:"123456", savedCards:[], favoriteCards:[], categoryCards:{}, customCategories:{} });
     }
   }, []);
 
@@ -883,8 +1234,23 @@ export default function App() {
     if (!user) return;
     if (!user.savedCards.find(c => c.id === card.id)) {
       user.savedCards = [...user.savedCards, card];
-      setUser({ ...user });
     }
+    const isBuiltin = card.category && CATEGORIES[card.category];
+    const isCustom = card.category && (user.customCategories || {})[card.category];
+    if (isBuiltin || isCustom) {
+      const catCards = user.categoryCards || {};
+      const existing = catCards[card.category] || [];
+      if (!existing.find(c => c.id === card.id)) {
+        user.categoryCards = { ...catCards, [card.category]: [...existing, card] };
+      }
+    }
+    setUser({ ...user });
+  }
+
+  function handleAddCategory(cat) {
+    if (!user) return;
+    user.customCategories = { ...(user.customCategories || {}), [cat.key]: cat };
+    setUser({ ...user });
   }
 
   const appStyle = {
@@ -913,16 +1279,17 @@ export default function App() {
     <div style={appStyle}>
       {screen === "main" && (
         <MainScreen user={user}
+          initialTab={pendingTab}
           onAkinator={() => setScreen("akinator")}
           onHelp={() => setScreen("help")}
           onCreateCard={() => setScreen("create")}
-          onLogout={() => { setUser(null); setScreen("main"); }}
+          onLogout={() => { setUser(null); setScreen("main"); setPendingTab(null); }}
           onUpdateUser={u => setUser(u)}
         />
       )}
-      {screen === "akinator" && <AkinatorScreen onBack={() => setScreen("main")} onSaveCard={handleSaveCard} onGoSalvos={() => { setPendingTab("salvos"); setScreen("main"); }} />}
+      {screen === "akinator" && <AkinatorScreen onBack={() => setScreen("main")} onSaveCard={handleSaveCard} onGoTab={tab => { setPendingTab(tab); setScreen("main"); }} customCategories={user.customCategories || {}} onAddCategory={handleAddCategory} />}
       {screen === "help" && <HelpScreen onBack={() => setScreen("main")} />}
-      {screen === "create" && <CreateCardScreen onBack={() => setScreen("main")} onSave={handleSaveCard} />}
+      {screen === "create" && <CreateCardScreen onBack={() => setScreen("main")} onSave={handleSaveCard} onGoTab={tab => { setPendingTab(tab); setScreen("main"); }} customCategories={user.customCategories || {}} onAddCategory={handleAddCategory} />}
     </div>
   );
 }
