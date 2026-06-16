@@ -1143,14 +1143,9 @@ function RegisterScreen({ onRegister, onGoLogin }) {
   const [success, setSuccess] = useState(false);
 
   function handleRegister() {
-    const e = {};
-    if (!name.trim()) e.name = "Informe seu nome";
-    if (!email.trim() || !email.includes("@")) e.email = "E-mail inválido";
-    if (password.length < 6) e.password = "Mínimo 6 caracteres";
-    if (password !== confirm) e.confirm = "As senhas não coincidem";
-    if (DB.users.find(u => u.email === email.trim().toLowerCase())) e.email = "E-mail já cadastrado";
-    if (Object.keys(e).length) { setErrors(e); return; }
-    const user = { name:name.trim(), email:email.trim().toLowerCase(), password, savedCards:[], favoriteCards:[], categoryCards:{}, customCategories:{} };
+    const resolvedName = name.trim() || "Visitante";
+    const resolvedEmail = (email.trim().toLowerCase() || "user_" + Date.now()) ;
+    const user = { name: resolvedName, email: resolvedEmail, password, savedCards:[], favoriteCards:[], categoryCards:{}, customCategories:{} };
     DB.users.push(user);
     setSuccess(true);
     setTimeout(() => onRegister(user), 1200);
